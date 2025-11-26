@@ -81,6 +81,7 @@ export default function Docs() {
           </h2>
           <p className="text-slate-400 text-sm leading-relaxed">
             このWEBサイトのリポジトリです。<br />
+            Github Actionを使ってGithub Pagesへ自動デプロイしています。
           </p>
       </a>
     </div>
