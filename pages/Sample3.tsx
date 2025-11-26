@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Environment, ContactShadows, Center } from "@react-three/drei";
 import { ArrowLeft, UploadCloud, FileBox, CheckCircle2, AlertCircle, Box, Settings2, ZoomIn, RotateCw, Image as ImageIcon, ArrowRight } from "lucide-react";
-import { Loader, UploadedModel } from "../components/SceneComponents";
+import { Loader, UploadedModel, PlyModel } from "../components/SceneComponents";
 import { CodeBlock } from "../components/CodeBlock";
 
 export default function Sample3() {
@@ -35,9 +35,9 @@ export default function Sample3() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.endsWith('.glb') && !file.name.endsWith('.gltf')) {
-        setError("Please upload a .glb or .gltf file.");
-        return;
+    if (!file.name.endsWith('.glb') && !file.name.endsWith('.gltf') && !file.name.endsWith('.ply')) {
+      setError("Please upload a .glb, .gltf or .ply file.");
+      return;
     }
 
     setError(null);
@@ -114,11 +114,11 @@ const handleFileChange = (e) => {
                     
                     <Suspense fallback={<Loader />}>
                         <Center>
-                            <UploadedModel 
-                              url={fileUrl} 
-                              scale={scale} 
-                              rotationSpeed={rotationSpeed} 
-                            />
+                            {fileName && fileName.toLowerCase().endsWith('.ply') ? (
+                              <PlyModel url={fileUrl} scale={scale} rotationSpeed={rotationSpeed} />
+                            ) : (
+                              <UploadedModel url={fileUrl} scale={scale} rotationSpeed={rotationSpeed} />
+                            )}
                         </Center>
                         <Environment preset={envPreset as any} environmentIntensity={envIntensity} />
                         <ContactShadows position={[0, -1, 0]} opacity={0.6} scale={10} blur={2.5} far={4} color="black" />
@@ -145,10 +145,10 @@ const handleFileChange = (e) => {
                 
                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <p className="mb-1 text-sm text-slate-500"><span className="font-semibold">Click to upload</span></p>
-                        <p className="text-xs text-slate-500">.GLB or .GLTF files</p>
+                      <p className="mb-1 text-sm text-slate-500"><span className="font-semibold">Click to upload</span></p>
+                      <p className="text-xs text-slate-500">.GLB, .GLTF or .PLY files</p>
                     </div>
-                    <input type="file" className="hidden" accept=".glb,.gltf" onChange={handleFileChange} />
+                    <input type="file" className="hidden" accept=".glb,.gltf,.ply" onChange={handleFileChange} />
                 </label>
 
                 {error && (

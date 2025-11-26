@@ -1,7 +1,8 @@
 import React, { useRef, useEffect } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame, useThree, useLoader } from "@react-three/fiber";
 import { Html, useProgress, Float, useGLTF, MeshDistortMaterial } from "@react-three/drei";
-import { Mesh, Box3, Vector3 } from "three";
+import { Mesh, Box3, Vector3, BufferGeometry } from "three";
+import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader";
 import { ModelProps } from "../types";
 
 // ローダーコンポーネント
@@ -88,5 +89,80 @@ export function UploadedModel({ url, scale = 1, rotationSpeed = 0 }: ModelProps)
       object={scene} 
       scale={scale} 
     />
+  );
+}
+
+// PLYファイルをロードして表示するコンポーネント
+export function PlyModel({ url, scale = 1, rotationSpeed = 0 }: ModelProps) {
+  const geometry = useLoader(PLYLoader, url || "") as BufferGeometry;
+  const ref = useRef<any>(null);
+  const [autoScale, setAutoScale] = React.useState(1);
+
+  // ジオメトリの前処理: 中心合わせ、法線計算（面がある場合）、自動スケーリング
+  useEffect(() => {
+    if (!geometry) return;
+
+    try {
+      // バウンディングボックスからサイズを計算して自動スケールを決定
+      geometry.computeBoundingBox();
+      const box = geometry.boundingBox as Box3;
+      const size = box.getSize(new Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const desired = 2; // シーン上での目標サイズ (units)
+      const auto = maxDim > 0 ? desired / maxDim : 1;
+      setAutoScale(auto);
+
+      // 中心を原点へ移動（位置属性を直接移動）
+      if (geometry.center) {
+        geometry.center();
+      } else {
+        const center = box.getCenter(new Vector3());
+        const pos = geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          pos.setX(i, pos.getX(i) - center.x);
+          pos.setY(i, pos.getY(i) - center.y);
+          pos.setZ(i, pos.getZ(i) - center.z);
+        }
+        pos.needsUpdate = true;
+      }
+
+      // 面情報がある（indexが存在する）場合のみ法線を計算
+      if (!geometry.attributes.normal && geometry.index) {
+        geometry.computeVertexNormals();
+      }
+    } catch (e) {
+      // 無害な失敗は無視
+    }
+  }, [geometry]);
+
+  useFrame((state, delta) => {
+    if (ref.current) {
+      ref.current.rotation.y += delta * rotationSpeed;
+    }
+  });
+
+  if (!geometry) return null;
+
+  const hasVertexColors = Boolean(geometry.attributes.color);
+
+  // 点群（faces/indexがない）なら Points で描画
+  if (!geometry.index) {
+    return (
+      <points ref={ref} geometry={geometry} scale={[autoScale * scale, autoScale * scale, autoScale * scale]}>
+        <pointsMaterial size={0.02 * scale} vertexColors={hasVertexColors} sizeAttenuation={true} />
+      </points>
+    );
+  }
+
+  // 通常のメッシュとして描画
+  return (
+    <mesh ref={ref} geometry={geometry} scale={[autoScale * scale, autoScale * scale, autoScale * scale]}>
+      <meshStandardMaterial
+        vertexColors={hasVertexColors}
+        color={hasVertexColors ? undefined : "#bdbdbd"}
+        metalness={0.6}
+        roughness={0.4}
+      />
+    </mesh>
   );
 }
